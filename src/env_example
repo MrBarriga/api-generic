@@ -1,0 +1,7 @@
+
+MYSQL_DB=apiproject
+MYSQL_USER=root
+MYSQL_PASSWORD=161709
+MYSQL_HOST=localhost
+JWT_SECRET=your_jwt_secret
+PORT=3306
