@@ -8,7 +8,7 @@ const { generateCustomToken } = require("../utils/tokenUtils");
 exports.requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     // Verificar se o usuário existe
     const user = await User.findOne({ where: { email } });
     if (!user) {
