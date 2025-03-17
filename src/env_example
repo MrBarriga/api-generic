@@ -1,7 +1,29 @@
 
 MYSQL_DB=apiproject
+MYSQL_USER=mysql
+MYSQL_PASSWORD=161709
+MYSQL_HOST=mysql://mysql:161709@podevim_banco-de-dados:3306/apiproject
+MYSQL_PORT=3306
+
+JWT_SECRET=your_jwt_secret
+PORT=5000
+
+EMAIL_USER=projetoseubarriga@gmail.com
+EMAIL_PASS=panj hgdd kcbg imoh
+FRONTEND_URL=http://localhost:3000
+
+#### Rodar Local #########
+
+
+MYSQL_DB=apiproject
 MYSQL_USER=root
 MYSQL_PASSWORD=161709
 MYSQL_HOST=localhost
+MYSQL_PORT=3306
+
 JWT_SECRET=your_jwt_secret
-PORT=3306
+PORT=5000
+
+EMAIL_USER=projetoseubarriga@gmail.com
+EMAIL_PASS=panj hgdd kcbg imoh
+FRONTEND_URL=http://localhost:3000
