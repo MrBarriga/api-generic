@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const morgan = require("morgan");
 const cors = require("cors");
-const sequelize = require("./src/config/database"); // Importa a instância do Sequelize configurada
+const sequelize = require("./src/config/database"); // Banco de dados
 const authRoutes = require("./src/routes/authRoutes");
 const addressRoutes = require("./src/routes/addressRoutes");
 const userRoutes = require("./src/routes/userRoutes");
@@ -22,7 +22,7 @@ app.use(cors({
 app.use(express.json());
 app.use(morgan("dev"));
 
-// 📌 Corrigido: Configuração do Swagger deve ser inicializada corretamente
+// 📌 Configuração do Swagger
 const swaggerOptions = {
   swaggerDefinition: {
     openapi: "3.0.0",
@@ -47,32 +47,29 @@ const swaggerOptions = {
       },
     },
   },
-  apis: ["./src/routes/*.js"], // 📌 Confirme se os arquivos das rotas estão aqui
+  apis: ["./src/routes/*.js"], // Certifique-se de que os arquivos das rotas estão aqui
 };
 
-// 📌 Geração da documentação Swagger a partir das rotas
+// 📌 Geração da documentação Swagger
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-
-// 📌 Certifique-se de que a rota `/api-docs` está registrada corretamente
-app.get("/api-docs", (req, res) => {
-  res.send(swaggerDocs);
-});
 
 // 📌 Registra as rotas da API corretamente
 app.use("/api/auth", authRoutes);
 app.use("/api/address", addressRoutes);
 app.use("/api/user", userRoutes);
 
-// 📌 Teste de rota raiz para verificar se a API está respondendo corretamente
+// 📌 Teste de rota raiz para verificar se a API está online
 app.get("/", (req, res) => {
-  res.send("🔥 API is running!");
+  res.json({
+    status: "🔥 API is running!",
+    docs: "https://api.podevim.com.br/api-docs"
+  });
 });
 
-// Definição da porta
+// 📌 Definição da porta e inicialização do servidor
 const PORT = process.env.PORT || 5000;
 
-// 📌 Correção: Teste a conexão antes de iniciar o servidor
 sequelize
   .authenticate()
   .then(() => {
