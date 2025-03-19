@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const morgan = require("morgan");
+const cors = require("cors");
 const sequelize = require("./src/config/database"); // Importa a instância do Sequelize configurada
 const authRoutes = require("./src/routes/authRoutes");
 const addressRoutes = require("./src/routes/addressRoutes");
@@ -9,6 +10,13 @@ const swaggerJsDoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 
 const app = express();
+
+// Middleware CORS para permitir requisições externas
+app.use(cors({
+  origin: ["https://api.podevim.com.br", "https://www.podevim.com.br"],
+  methods: "GET,POST,PUT,DELETE",
+  allowedHeaders: "Content-Type,Authorization"
+}));
 
 // Configuração do Swagger
 const swaggerOptions = {
@@ -21,7 +29,8 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: "http://localhost:5000",
+        url: "https://api.podevim.com.br",
+        description: "Servidor Produção"
       },
     ],
     components: {
@@ -58,10 +67,10 @@ sequelize
   .sync()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Swagger documentation available at http://localhost:${PORT}/api-docs`);
+      console.log(`🔥 Server running on port ${PORT}`);
+      console.log(`📄 Swagger documentation available at https://api.podevim.com.br/api-docs`);
     });
   })
   .catch((err) => {
-    console.error("Unable to connect to the database:", err);
+    console.error("❌ Unable to connect to the database:", err);
   });
