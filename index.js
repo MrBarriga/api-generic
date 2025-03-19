@@ -18,7 +18,11 @@ app.use(cors({
   allowedHeaders: "Content-Type,Authorization"
 }));
 
-// Configuração do Swagger
+// Middlewares básicos
+app.use(express.json());
+app.use(morgan("dev"));
+
+// 📌 Corrigido: Configuração do Swagger deve ser inicializada corretamente
 const swaggerOptions = {
   swaggerDefinition: {
     openapi: "3.0.0",
@@ -43,28 +47,38 @@ const swaggerOptions = {
       },
     },
   },
-  apis: ["./src/routes/*.js"], // Caminho para os arquivos de rotas onde estão os comentários de documentação
+  apis: ["./src/routes/*.js"], // 📌 Confirme se os arquivos das rotas estão aqui
 };
 
-// Geração da documentação Swagger a partir das rotas
+// 📌 Geração da documentação Swagger a partir das rotas
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-// Middlewares
-app.use(express.json());
-app.use(morgan("dev"));
+// 📌 Certifique-se de que a rota `/api-docs` está registrada corretamente
+app.get("/api-docs", (req, res) => {
+  res.send(swaggerDocs);
+});
 
-// Rotas
+// 📌 Registra as rotas da API corretamente
 app.use("/api/auth", authRoutes);
 app.use("/api/address", addressRoutes);
 app.use("/api/user", userRoutes);
 
-// Porta do Servidor
+// 📌 Teste de rota raiz para verificar se a API está respondendo corretamente
+app.get("/", (req, res) => {
+  res.send("🔥 API is running!");
+});
+
+// Definição da porta
 const PORT = process.env.PORT || 5000;
 
-// Conexão com o Banco de Dados e Inicialização do Servidor
+// 📌 Correção: Teste a conexão antes de iniciar o servidor
 sequelize
-  .sync()
+  .authenticate()
+  .then(() => {
+    console.log("✅ Database connected!");
+    return sequelize.sync();
+  })
   .then(() => {
     app.listen(PORT, () => {
       console.log(`🔥 Server running on port ${PORT}`);
@@ -74,3 +88,4 @@ sequelize
   .catch((err) => {
     console.error("❌ Unable to connect to the database:", err);
   });
+
