@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const morgan = require("morgan");
 const cors = require("cors");
-const sequelize = require("./src/config/database"); // Banco de dados
+const sequelize = require("./src/config/database");
 const authRoutes = require("./src/routes/authRoutes");
 const addressRoutes = require("./src/routes/addressRoutes");
 const userRoutes = require("./src/routes/userRoutes");
@@ -10,6 +10,9 @@ const swaggerJsDoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 
 const app = express();
+
+// Detecta se está rodando localmente ou em produção
+const isLocal = process.env.NODE_ENV !== "production";
 
 // Middleware CORS para permitir requisições externas
 app.use(cors({
@@ -22,8 +25,7 @@ app.use(cors({
 app.use(express.json());
 app.use(morgan("dev"));
 
-// 📌 Detecta se está rodando localmente ou em produção
-const isLocal = process.env.NODE_ENV !== "production";
+// Configuração dinâmica de servidores para Swagger
 const servers = [
   {
     url: "https://api.podevim.com.br",
@@ -31,7 +33,6 @@ const servers = [
   }
 ];
 
-// Se estiver rodando localmente, adiciona o localhost como servidor
 if (isLocal) {
   servers.push({
     url: "http://localhost:5000",
@@ -39,7 +40,7 @@ if (isLocal) {
   });
 }
 
-// 📌 Configuração do Swagger
+// Configuração do Swagger
 const swaggerOptions = {
   swaggerDefinition: {
     openapi: "3.0.0",
@@ -59,31 +60,28 @@ const swaggerOptions = {
       },
     },
   },
-<<<<<<< HEAD
-  apis: ["./src/routes/*.js"], // Certifique-se de que os arquivos das rotas estão aqui
-=======
-  apis: ["./src/routes/*.js", "./src/routes/authRoutes.js"], // Caminho para os arquivos de rotas onde estão os comentários de documentação
->>>>>>> development
+  // Inclui todos os arquivos de rotas para documentação
+  apis: ["./src/routes/*.js"],
 };
 
-// 📌 Geração da documentação Swagger
+// Geração da documentação Swagger
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-// 📌 Registra as rotas da API corretamente
+// Registra as rotas da API
 app.use("/api/auth", authRoutes);
 app.use("/api/address", addressRoutes);
 app.use("/api/user", userRoutes);
 
-// 📌 Teste de rota raiz para verificar se a API está online
+// Teste de rota raiz
 app.get("/", (req, res) => {
   res.json({
     status: "🔥 API is running!",
-    docs: isLocal ? "http://localhost:5000/api-docs" : "https://api.podevim.com.br/api-docs"
+    docs: `${isLocal ? "http://localhost:5000" : "https://api.podevim.com.br"}/api-docs`
   });
 });
 
-// 📌 Definição da porta e inicialização do servidor
+// Definição da porta e inicialização do servidor
 const PORT = process.env.PORT || 5000;
 
 sequelize
@@ -95,7 +93,7 @@ sequelize
   .then(() => {
     app.listen(PORT, () => {
       console.log(`🔥 Server running on port ${PORT}`);
-      console.log(`📄 Swagger documentation available at ${isLocal ? "http://localhost:5000/api-docs" : "https://api.podevim.com.br/api-docs"}`);
+      console.log(`📄 Swagger documentation available at ${isLocal ? "http://localhost:5000" : "https://api.podevim.com.br"}/api-docs`);
     });
   })
   .catch((err) => {
