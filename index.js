@@ -21,8 +21,8 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: "http://localhost:5000",
-      },
+      { url: "https://api.podevim.com.br", description: "Servidor Produção" },
+      { url: "http://localhost:5000", description: "Servidor Local" }
     ],
     components: {
       securitySchemes: {
