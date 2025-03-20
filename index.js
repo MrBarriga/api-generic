@@ -13,7 +13,7 @@ const app = express();
 
 // Middleware CORS para permitir requisições externas
 app.use(cors({
-  origin: ["https://api.podevim.com.br", "https://www.podevim.com.br"],
+  origin: ["https://api.podevim.com.br", "https://www.podevim.com.br", "http://localhost:5000"],
   methods: "GET,POST,PUT,DELETE",
   allowedHeaders: "Content-Type,Authorization"
 }));
@@ -21,6 +21,23 @@ app.use(cors({
 // Middlewares básicos
 app.use(express.json());
 app.use(morgan("dev"));
+
+// 📌 Detecta se está rodando localmente ou em produção
+const isLocal = process.env.NODE_ENV !== "production";
+const servers = [
+  {
+    url: "https://api.podevim.com.br",
+    description: "Servidor Produção"
+  }
+];
+
+// Se estiver rodando localmente, adiciona o localhost como servidor
+if (isLocal) {
+  servers.push({
+    url: "http://localhost:5000",
+    description: "Servidor Local"
+  });
+}
 
 // 📌 Configuração do Swagger
 const swaggerOptions = {
@@ -31,12 +48,7 @@ const swaggerOptions = {
       version: "1.0.0",
       description: "API Documentation for Generic API Project",
     },
-    servers: [
-      {
-        url: "https://api.podevim.com.br",
-        description: "Servidor Produção"
-      },
-    ],
+    servers, // Usa a lista dinâmica de servidores
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -63,7 +75,7 @@ app.use("/api/user", userRoutes);
 app.get("/", (req, res) => {
   res.json({
     status: "🔥 API is running!",
-    docs: "https://api.podevim.com.br/api-docs"
+    docs: isLocal ? "http://localhost:5000/api-docs" : "https://api.podevim.com.br/api-docs"
   });
 });
 
@@ -79,10 +91,9 @@ sequelize
   .then(() => {
     app.listen(PORT, () => {
       console.log(`🔥 Server running on port ${PORT}`);
-      console.log(`📄 Swagger documentation available at https://api.podevim.com.br/api-docs`);
+      console.log(`📄 Swagger documentation available at ${isLocal ? "http://localhost:5000/api-docs" : "https://api.podevim.com.br/api-docs"}`);
     });
   })
   .catch((err) => {
     console.error("❌ Unable to connect to the database:", err);
   });
-
