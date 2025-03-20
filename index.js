@@ -34,7 +34,7 @@ const swaggerOptions = {
       },
     },
   },
-  apis: ["./src/routes/*.js"], // Caminho para os arquivos de rotas onde estão os comentários de documentação
+  apis: ["./src/routes/*.js", "./src/routes/authRoutes.js"], // Caminho para os arquivos de rotas onde estão os comentários de documentação
 };
 
 // Geração da documentação Swagger a partir das rotas

@@ -5,3 +5,12 @@ MYSQL_PASSWORD=161709
 MYSQL_HOST=localhost
 JWT_SECRET=your_jwt_secret
 PORT=3306
+
+
+#### Produção  ####
+
+MYSQL_DB=apiproject
+MYSQL_USER=mysql
+MYSQL_PASSWORD=161709
+MYSQL_HOST=podevim_banco-de-dados
+MYSQL_PORT=3306
