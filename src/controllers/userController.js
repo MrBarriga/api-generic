@@ -4,6 +4,35 @@ const emailService = require("../services/emailService");
 const { Op } = require("sequelize");
 const { generateCustomToken } = require("../utils/tokenUtils");
 
+// Busca por usuário por filtro
+exports.getUser = async (req, res) => {
+  try {
+    const { name, last_name, email, phone_number } = req.query;
+
+    if (!name && !last_name && !email && !phone_number) {
+      return res.status(400).json({ error: "At least one search parameter is required" });
+    }
+
+    // Criando um objeto de condições dinamicamente
+    let whereCondition = {};
+    if (name) whereCondition.name = { [Op.like]: `%${name}%` };
+    if (last_name) whereCondition.last_name = { [Op.like]: `%${last_name}%` };
+    if (email) whereCondition.email = { [Op.like]: `%${email}%` };
+    if (phone_number) whereCondition.phone_number = { [Op.like]: `%${phone_number}%` };
+
+    const users = await User.findAll({ where: whereCondition });
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: "No users found" });
+    }
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("Error searching users:", error);
+    res.status(500).json({ error: "Failed to search users" });
+  }
+};
+
 // Solicitação de redefinição de senha
 exports.requestPasswordReset = async (req, res) => {
   try {

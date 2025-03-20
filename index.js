@@ -59,7 +59,11 @@ const swaggerOptions = {
       },
     },
   },
+<<<<<<< HEAD
   apis: ["./src/routes/*.js"], // Certifique-se de que os arquivos das rotas estão aqui
+=======
+  apis: ["./src/routes/*.js", "./src/routes/authRoutes.js"], // Caminho para os arquivos de rotas onde estão os comentários de documentação
+>>>>>>> development
 };
 
 // 📌 Geração da documentação Swagger
