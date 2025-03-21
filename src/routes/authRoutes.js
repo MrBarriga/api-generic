@@ -5,11 +5,7 @@ const authController = require("../controllers/authController");
 
 /**
  * @swagger
-<<<<<<< HEAD
- * /api/user/register:
-=======
  * /api/auth/register:
->>>>>>> development
  *   post:
  *     summary: Criar um novo usuário.
  *     description: Registra um novo usuário com nome, sobrenome, e-mail e senha.
