@@ -17,6 +17,17 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const isLocal = process.env.NODE_ENV !== "production";
 
+// 🚧 Middleware para forçar HTTPS em produção
+if (!isLocal) {
+  app.use((req, res, next) => {
+    if (req.header('x-forwarded-proto') !== 'https') {
+      const httpsUrl = `https://${req.header('host')}${req.url}`;
+      return res.redirect(301, httpsUrl);
+    }
+    next();
+  });
+}
+
 // 🔒 Melhor segurança com configurações adicionais do Helmet
 app.use(
   helmet({
@@ -40,27 +51,32 @@ app.use(
   cors({
     origin: function (origin, callback) {
       // Lista de origens permitidas
-      const allowedOrigins = [
-        // Origens locais
-        "http://localhost:5000",
-        "http://localhost:3000",
-        "http://127.0.0.1:5000",
-        "http://127.0.0.1:3000",
-        // IP específico
-        "http://212.85.1.22:3000",
-        // Origens de produção
-        "https://api.podevim.com.br",
-        "https://www.podevim.com.br"
-      ];
+      const allowedOrigins = isLocal
+        ? [
+          // Origens locais
+          "http://localhost:5000",
+          "http://localhost:3000",
+          "http://127.0.0.1:5000",
+          "http://127.0.0.1:3000",
+          // IP específico
+          "http://212.85.1.22:3000"
+        ]
+        : [
+          // Origens de produção apenas com HTTPS
+          "https://api.podevim.com.br",
+          "https://www.podevim.com.br"
+        ];
 
       // Permitir solicitações sem origem (como apps móveis ou curl)
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
         console.log("Origem CORS bloqueada:", origin);
-        callback(null, true); // Em desenvolvimento, permite todas as origens mas registra o que foi bloqueado
+        // Em produção, bloqueamos origens não permitidas
+        // Em desenvolvimento, permitimos para facilitar testes
+        callback(isLocal ? null : new Error('Origem não permitida pelo CORS'), isLocal);
       }
     },
     methods: "GET,POST,PUT,DELETE,OPTIONS",
@@ -88,10 +104,11 @@ const swaggerOptions = {
     servers: isLocal
       ? [
         { url: "http://localhost:5000", description: "Servidor Local (localhost)" },
-        { url: "http://212.85.1.22:3000", description: "Servidor Local (IP)" },
-        { url: `http://${process.env.HOST || 'localhost'}:${PORT}`, description: "Servidor Dinâmico" }
+        { url: "http://212.85.1.22:3000", description: "Servidor Local (IP)" }
       ]
-      : [{ url: "https://api.podevim.com.br", description: "Servidor Produção" }],
+      : [
+        { url: "https://api.podevim.com.br", description: "Servidor Produção" }
+      ],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -107,7 +124,14 @@ const swaggerOptions = {
 
 // 📄 Geração e configuração do Swagger
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }', // Remove a barra superior
+  swaggerOptions: {
+    docExpansion: 'list',
+    persistAuthorization: true,
+  }
+}));
 
 // 📝 Middleware de Logging de requisições
 app.use((req, res, next) => {
@@ -174,9 +198,10 @@ const startServer = async () => {
     app.listen(PORT, '0.0.0.0', () => { // Escutar em todas as interfaces
       console.log(`🔥 Servidor rodando na porta ${PORT}`);
       console.log(`📄 Documentação Swagger disponível em:`);
-      console.log(`   - Local: http://localhost:${PORT}/api-docs`);
-      console.log(`   - Rede: http://${HOST}:${PORT}/api-docs`);
-      if (!isLocal) {
+      if (isLocal) {
+        console.log(`   - Local: http://localhost:${PORT}/api-docs`);
+        console.log(`   - Rede: http://${HOST}:${PORT}/api-docs`);
+      } else {
         console.log(`   - Produção: https://api.podevim.com.br/api-docs`);
       }
     });
