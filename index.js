@@ -12,12 +12,14 @@ const swaggerJsDoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const isLocal = process.env.NODE_ENV !== "production";
 
-// 🔒 Melhor segurança com configurações adicionais do Helmet
+// 🔒 Segurança básica com Helmet
 app.use(
   helmet({
     contentSecurityPolicy: false,
@@ -25,33 +27,25 @@ app.use(
   })
 );
 
-// 🚦 Rate Limiting para proteção contra ataques DoS
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // Limite de 100 requisições por IP
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Muitas requisições, tente novamente mais tarde" },
-});
-app.use("/api", apiLimiter);
-
-// 🌍 Configuração do CORS para permitir requisições externas
-app.use(
-  cors({
-    origin: isLocal
-      ? ["http://localhost:5000", "http://localhost:3000", "http://127.0.0.1:5000", "http://127.0.0.1:3000"]
-      : ["https://api.podevim.com.br", "https://www.podevim.com.br"],
-    methods: "GET,POST,PUT,DELETE",
-    allowedHeaders: "Content-Type,Authorization",
-    credentials: true
-  })
-);
+// 🌍 Configuração do CORS - Permitir todas origens em desenvolvimento
+app.use(cors({ origin: true, credentials: true }));
 
 // 📏 Middlewares básicos
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 
-// 📑 Configuração dinâmica do Swagger
+// 📑 Configuração do Swagger usando variáveis de ambiente para determinar o host
+const currentHost = isLocal
+  ? `http://localhost:${PORT}`
+  : "https://api.podevim.com.br";
+
+// Diretório para guardar a definição do Swagger
+const swaggerDir = path.join(__dirname, 'swagger');
+if (!fs.existsSync(swaggerDir)) {
+  fs.mkdirSync(swaggerDir, { recursive: true });
+}
+
+// Definição do Swagger
 const swaggerOptions = {
   swaggerDefinition: {
     openapi: "3.0.0",
@@ -61,9 +55,9 @@ const swaggerOptions = {
       description: "API do sistema Podevim para gerenciamento escolar e estacionamentos",
       contact: { name: "Suporte Podevim", email: "suporte@podevim.com.br" },
     },
-    servers: isLocal
-      ? [{ url: "http://localhost:5000", description: "Servidor Local" }]
-      : [{ url: "https://api.podevim.com.br", description: "Servidor Produção" }],
+    servers: [
+      { url: currentHost, description: "Servidor Atual" }
+    ],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -77,19 +71,34 @@ const swaggerOptions = {
   apis: ["./src/routes/*.js"],
 };
 
-// 📄 Geração e configuração do Swagger
+// 📄 Geração da documentação Swagger
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-// 📝 Middleware de Logging de requisições
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    console.log(`${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`);
-  });
-  next();
+// Salvar a definição do Swagger para ser usada diretamente
+const swaggerOutputPath = path.join(swaggerDir, 'swagger.json');
+fs.writeFileSync(swaggerOutputPath, JSON.stringify(swaggerDocs, null, 2));
+
+// Opções avançadas para o Swagger UI
+const swaggerUiOptions = {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  swaggerOptions: {
+    url: `${currentHost}/swagger.json`, // Forçar o uso da URL correta
+    docExpansion: 'list',
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    filter: true,
+  }
+};
+
+// Servir a definição do Swagger como um arquivo estático
+app.get("/swagger.json", (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.sendFile(swaggerOutputPath);
 });
+
+// Configurar o Swagger UI
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(null, swaggerUiOptions));
 
 // 🔗 Registro das Rotas da API
 app.use("/api/auth", authRoutes);
@@ -103,7 +112,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "🔥 API Podevim está rodando!",
     version: "1.0.0",
-    docs: `${isLocal ? "http://localhost:5000" : "https://api.podevim.com.br"}/api-docs`,
+    docs: `${currentHost}/api-docs`,
   });
 });
 
@@ -125,9 +134,10 @@ app.use((req, res) => {
 const startServer = async () => {
   try {
     await connectToDatabase(); // 🔌 Conectar ao banco
-    app.listen(PORT, () => {
+
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🔥 Servidor rodando na porta ${PORT}`);
-      console.log(`📄 Documentação Swagger disponível em ${isLocal ? "http://localhost:5000" : "https://api.podevim.com.br"}/api-docs`);
+      console.log(`📄 Documentação Swagger disponível em: ${currentHost}/api-docs`);
     });
   } catch (err) {
     console.error("❌ Erro ao iniciar o servidor:", err);
