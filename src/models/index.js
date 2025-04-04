@@ -8,6 +8,8 @@ const Parking = require('./Parking');
 const ParkingSpot = require('./ParkingSpot');
 const ParkingReservation = require('./ParkingReservation');
 const Address = require('./Address');
+const { sequelize } = require("../config/database");
+
 
 // Associações User
 User.hasMany(StudentGuardian, { foreignKey: 'user_id' });
