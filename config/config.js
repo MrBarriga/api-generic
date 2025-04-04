@@ -8,6 +8,12 @@ module.exports = {
     host: process.env.MYSQL_HOST,
     dialect: "mysql",
     logging: console.log, // Ativa o log de SQL no console
+    migrationStorageTableName: 'sequelize_migrations',
+    // Adiciona esta propriedade para garantir que apenas migrations específicas sejam executadas
+    migrations: {
+      path: './src/migrations', // Ajuste para o caminho correto das suas migrations
+      pattern: /^20250327191853-create-podevim-schema\.js$/ // Padrão regex para filtrar apenas a migration desejada
+    }
   },
   test: {
     username: process.env.MYSQL_USER,
@@ -16,6 +22,12 @@ module.exports = {
     host: process.env.MYSQL_HOST,
     dialect: "mysql",
     logging: false, // Desativa logs em ambiente de teste
+    migrationStorageTableName: 'sequelize_migrations',
+    // Mesma configuração para ambiente de teste
+    migrations: {
+      path: './src/migrations',
+      pattern: /^20250327191853-create-podevim-schema\.js$/
+    }
   },
   production: {
     username: process.env.MYSQL_USER,
@@ -24,5 +36,11 @@ module.exports = {
     host: process.env.MYSQL_HOST,
     dialect: "mysql",
     logging: false, // Desativa logs em ambiente de produção
+    migrationStorageTableName: 'sequelize_migrations',
+    // Mesma configuração para ambiente de produção
+    migrations: {
+      path: './src/migrations',
+      pattern: /^20250327191853-create-podevim-schema\.js$/
+    }
   }
 };

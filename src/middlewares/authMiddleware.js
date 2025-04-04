@@ -1,30 +1,67 @@
 const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
-module.exports = (req, res, next) => {
-  const authHeader = req.header("Authorization");
-
-  // Verificar se o cabeçalho Authorization existe e se começa com "Bearer "
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "No token provided" });
-  }
-
-  const token = authHeader.split(" ")[1]; // Extrair o token do cabeçalho
-
+/**
+ * Middleware to authenticate and validate JWT tokens
+ */
+const authMiddleware = async (req, res, next) => {
   try {
-    // Verificar e decodificar o token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Get the token from the authorization header
+    const authHeader = req.headers.authorization;
 
-    // Armazenar os dados do usuário decodificado no objeto req
-    req.user = decoded;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Acesso negado. Token não fornecido." });
+    }
 
-    // Logs para debug
-    console.log("Authorization Header:", authHeader);
-    console.log("Token Decoded:", decoded);
-    console.log("User ID:", req.user.id);
+    const token = authHeader.split(" ")[1];
 
-    next(); // Continuar para o próximo middleware ou rota
+    if (!token) {
+      return res.status(401).json({ error: "Acesso negado. Token inválido." });
+    }
+
+    try {
+      // Verify the token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      // Find the user
+      const user = await User.findByPk(decoded.id);
+
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      // Check user status
+      if (user.status === "SUSPENDED") {
+        return res.status(403).json({ error: "Conta suspensa. Entre em contato com o suporte." });
+      }
+
+      if (user.status === "INACTIVE") {
+        return res.status(403).json({ error: "Conta inativa. Por favor, ative sua conta." });
+      }
+
+      // Add user info to request
+      req.user = {
+        id: user.id,
+        email: user.email,
+        user_type: user.user_type
+      };
+
+      next();
+    } catch (error) {
+      if (error.name === "TokenExpiredError") {
+        return res.status(401).json({ error: "Token expirado. Por favor, faça login novamente." });
+      }
+
+      if (error.name === "JsonWebTokenError") {
+        return res.status(401).json({ error: "Token inválido. Por favor, faça login novamente." });
+      }
+
+      throw error;
+    }
   } catch (error) {
-    console.error("Token verification failed:", error.message);
-    res.status(401).json({ error: "Invalid token" });
+    console.error("Erro de autenticação:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
   }
 };
+
+module.exports = authMiddleware;
