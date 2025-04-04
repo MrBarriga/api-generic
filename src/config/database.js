@@ -1,45 +1,57 @@
-require("dotenv").config(); // Carrega as variáveis de ambiente do arquivo .env
+require("dotenv").config(); // Carrega as variáveis de ambiente do .env
 const { Sequelize } = require("sequelize");
 
 // Validações das variáveis de ambiente
-if (!process.env.MYSQL_DB || !process.env.MYSQL_USER || !process.env.MYSQL_PASSWORD || !process.env.MYSQL_HOST) {
-    console.error("❌ Erro: Variáveis de ambiente para configuração do banco de dados não foram definidas. Verifique o arquivo .env.");
-    process.exit(1); // Finaliza a aplicação se as variáveis estiverem ausentes
+const requiredEnvVars = ["MYSQL_DB", "MYSQL_USER", "MYSQL_PASSWORD", "MYSQL_HOST"];
+const missingVars = requiredEnvVars.filter((env) => !process.env[env]);
+
+if (missingVars.length > 0) {
+    console.error(`❌ Erro: Variáveis de ambiente ausentes: ${missingVars.join(", ")}`);
+    process.exit(1);
 }
 
 // Inicializa a conexão com o banco de dados
 const sequelize = new Sequelize(
-    process.env.MYSQL_DB, // Nome do banco de dados
-    process.env.MYSQL_USER, // Nome do usuário do banco
-    process.env.MYSQL_PASSWORD, // Senha do banco de dados
+    process.env.MYSQL_DB,
+    process.env.MYSQL_USER,
+    process.env.MYSQL_PASSWORD,
     {
-        host: process.env.MYSQL_HOST, // Host do banco de dados
-        port: process.env.MYSQL_PORT || 3306, // Porta do MySQL
-        dialect: "mysql", // Dialeto do banco (MySQL)
-        logging: false, // Desativa logs do Sequelize
-        pool: { // Configurações adicionais do pool de conexões
-            max: 5, // Número máximo de conexões no pool
-            min: 0, // Número mínimo de conexões no pool
-            acquire: 30000, // Tempo máximo para adquirir uma conexão antes de erro
-            idle: 10000 // Tempo máximo que uma conexão pode ficar inativa antes de ser liberada
-        }
+        host: process.env.MYSQL_HOST,
+        port: process.env.MYSQL_PORT || 3306,
+        dialect: "mysql",
+        logging: false,
+        pool: {
+            max: 5,
+            min: 0,
+            acquire: 30000,
+            idle: 10000,
+        },
     }
 );
 
-// Teste de Conexão
-(async () => {
+// Função para testar a conexão
+const connectToDatabase = async () => {
     try {
         await sequelize.authenticate();
         console.log("✅ Conectado ao banco de dados com sucesso!");
 
-        // Sincroniza os modelos com o banco de dados, criando tabelas se necessário
-        await sequelize.sync({ alter: true });
-        console.log("📦 Banco de dados sincronizado!");
+        // 🚀 Verifica se a tabela existe antes de sincronizar
+        const [results] = await sequelize.query("SHOW TABLES LIKE 'users';");
 
+        if (results.length === 0) {
+            console.log("⚡ Criando tabela 'users'...");
+            await sequelize.sync({ force: true }); // Cria a tabela se não existir
+        } else {
+            console.log("✅ Tabela 'users' já existe!");
+            await sequelize.sync(); // Apenas sincroniza sem modificar índices
+        }
+
+        console.log("📦 Banco de dados sincronizado!");
     } catch (err) {
         console.error("🔥 Erro ao conectar ao banco de dados:", err);
-        process.exit(1); // Finaliza a aplicação em caso de falha na conexão
+        throw new Error("Falha ao conectar ao banco de dados");
     }
-})();
+};
 
-module.exports = sequelize;
+// Exporta a conexão e a função de conexão
+module.exports = { sequelize, connectToDatabase };
