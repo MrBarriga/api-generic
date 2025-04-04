@@ -3,25 +3,14 @@ const sequelize = require("../config/database");
 
 const User = sequelize.define("User", {
   id: {
-    type: DataTypes.STRING,
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
     primaryKey: true,
     allowNull: false,
   },
   name: {
     type: DataTypes.STRING,
     allowNull: false,
-  },
-  last_name: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  phone_number: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  pro_number: {
-    type: DataTypes.STRING,
-    allowNull: true,
   },
   email: {
     type: DataTypes.STRING,
@@ -31,15 +20,44 @@ const User = sequelize.define("User", {
       isEmail: true,
     },
   },
+  phone_number: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   password: {
     type: DataTypes.STRING,
     allowNull: false,
+  },
+  profile_photo: {
+    type: DataTypes.STRING,
+    allowNull: true,
   },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,
   },
-  photo: {
+  last_access: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  status: {
+    type: DataTypes.ENUM('ACTIVE', 'INACTIVE', 'SUSPENDED'),
+    defaultValue: 'ACTIVE',
+    allowNull: false,
+  },
+  user_type: {
+    type: DataTypes.ENUM('ADMIN', 'SCHOOL', 'PARENT', 'STUDENT', 'PARKING_PROVIDER'),
+    allowNull: false,
+  },
+  two_factor_token: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  preferences: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  device_token: {
     type: DataTypes.STRING,
     allowNull: true,
   },
