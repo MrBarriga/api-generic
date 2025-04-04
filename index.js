@@ -38,9 +38,12 @@ app.use("/api", apiLimiter);
 // 🌍 Configuração do CORS para permitir requisições externas
 app.use(
   cors({
-    origin: ["https://api.podevim.com.br", "https://www.podevim.com.br", "http://localhost:5000"],
+    origin: isLocal
+      ? ["http://localhost:5000", "http://localhost:3000", "http://127.0.0.1:5000", "http://127.0.0.1:3000"]
+      : ["https://api.podevim.com.br", "https://www.podevim.com.br"],
     methods: "GET,POST,PUT,DELETE",
     allowedHeaders: "Content-Type,Authorization",
+    credentials: true
   })
 );
 
