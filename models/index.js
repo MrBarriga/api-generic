@@ -1,26 +1,23 @@
 require("dotenv").config();
-const fs = require("fs");
-const http = require("http");
-const https = require("https");
 const express = require("express");
 const morgan = require("morgan");
 const cors = require("cors");
-const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
-const swaggerJsDoc = require("swagger-jsdoc");
-const swaggerUi = require("swagger-ui-express");
 const { sequelize, connectToDatabase } = require("./src/config/database");
 const authRoutes = require("./src/routes/authRoutes");
 const addressRoutes = require("./src/routes/addressRoutes");
 const userRoutes = require("./src/routes/userRoutes");
 const schoolRoutes = require("./src/routes/schoolRoutes");
 const parkingRoutes = require("./src/routes/parkingRoutes");
+const swaggerJsDoc = require("swagger-jsdoc");
+const swaggerUi = require("swagger-ui-express");
+const rateLimit = require("express-rate-limit");
+const helmet = require("helmet");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const isLocal = process.env.NODE_ENV !== "production";
 
-// 🔒 Segurança extra com Helmet
+// 🔒 Melhor segurança com configurações adicionais do Helmet
 app.use(
   helmet({
     contentSecurityPolicy: false,
@@ -28,25 +25,49 @@ app.use(
   })
 );
 
-// 🚦 Proteção contra ataques DoS (Rate Limiting)
+// 🚦 Rate Limiting para proteção contra ataques DoS
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100, // Limite de 100 requisições por IP
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Muitas requisições, tente novamente mais tarde" },
 });
 app.use("/api", apiLimiter);
 
-// 🌍 Configuração dinâmica do CORS
+// 🌍 Configuração do CORS para permitir requisições externas
 app.use(
   cors({
-    origin: isLocal
-      ? ["http://localhost:5000", "http://localhost:3000"]
-      : ["https://api.podevim.com.br", "https://www.podevim.com.br"],
-    methods: "GET,POST,PUT,DELETE",
-    allowedHeaders: "Content-Type,Authorization",
+    origin: function (origin, callback) {
+      // Lista de origens permitidas
+      const allowedOrigins = [
+        // Origens locais
+        "http://localhost:5000",
+        "http://localhost:3000",
+        "http://127.0.0.1:5000",
+        "http://127.0.0.1:3000",
+        // IP específico
+        "http://212.85.1.22:3000",
+        // Origens de produção
+        "https://api.podevim.com.br",
+        "https://www.podevim.com.br"
+      ];
+
+      // Permitir solicitações sem origem (como apps móveis ou curl)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+        callback(null, true);
+      } else {
+        console.log("Origem CORS bloqueada:", origin);
+        callback(null, true); // Em desenvolvimento, permite todas as origens mas registra o que foi bloqueado
+      }
+    },
+    methods: "GET,POST,PUT,DELETE,OPTIONS",
+    allowedHeaders: "Content-Type,Authorization,X-Requested-With",
     credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   })
 );
 
@@ -64,13 +85,20 @@ const swaggerOptions = {
       description: "API do sistema Podevim para gerenciamento escolar e estacionamentos",
       contact: { name: "Suporte Podevim", email: "suporte@podevim.com.br" },
     },
-    servers: [
-      { url: "http://localhost:5000", description: "Servidor Local (HTTP)" },
-      { url: "https://api.podevim.com.br", description: "Servidor Produção (HTTPS)" },
-    ],
+    servers: isLocal
+      ? [
+        { url: "http://localhost:5000", description: "Servidor Local (localhost)" },
+        { url: "http://212.85.1.22:3000", description: "Servidor Local (IP)" },
+        { url: `http://${process.env.HOST || 'localhost'}:${PORT}`, description: "Servidor Dinâmico" }
+      ]
+      : [{ url: "https://api.podevim.com.br", description: "Servidor Produção" }],
     components: {
       securitySchemes: {
-        bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
       },
     },
   },
@@ -81,6 +109,16 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
+// 📝 Middleware de Logging de requisições
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    console.log(`${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`);
+  });
+  next();
+});
+
 // 🔗 Registro das Rotas da API
 app.use("/api/auth", authRoutes);
 app.use("/api/address", addressRoutes);
@@ -88,15 +126,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/school", schoolRoutes);
 app.use("/api/parking", parkingRoutes);
 
-// 🔄 Redireciona HTTP para HTTPS (Apenas em produção)
-app.use((req, res, next) => {
-  if (!isLocal && req.headers["x-forwarded-proto"] !== "https") {
-    return res.redirect(`https://${req.headers.host}${req.url}`);
-  }
-  next();
-});
-
-// 🏠 Rota raiz de teste
+// 🏠 Teste de rota raiz
 app.get("/", (req, res) => {
   res.json({
     status: "🔥 API Podevim está rodando!",
@@ -119,30 +149,37 @@ app.use((req, res) => {
   res.status(404).json({ error: "Rota não encontrada" });
 });
 
-// 🔐 Configuração para rodar HTTP e HTTPS localmente
+// 🚀 Função para iniciar o servidor e conectar ao banco de dados
 const startServer = async () => {
   try {
     await connectToDatabase(); // 🔌 Conectar ao banco
 
-    // 🔑 Configuração de HTTPS (se houver certificados locais)
-    let server;
-    if (fs.existsSync("./certs/cert.pem") && fs.existsSync("./certs/key.pem")) {
-      const options = {
-        key: fs.readFileSync("./certs/key.pem"),
-        cert: fs.readFileSync("./certs/cert.pem"),
-      };
-      server = https.createServer(options, app);
-      console.log("✅ HTTPS ativado!");
-    } else {
-      server = http.createServer(app);
-      console.log("⚠️ HTTPS não configurado, rodando apenas em HTTP!");
-    }
+    // Obter o IP da máquina para exibir nos logs
+    const getNetworkIP = () => {
+      const interfaces = require('os').networkInterfaces();
+      for (const devName in interfaces) {
+        const iface = interfaces[devName];
+        for (let i = 0; i < iface.length; i++) {
+          const alias = iface[i];
+          if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal) {
+            return alias.address;
+          }
+        }
+      }
+      return '0.0.0.0';
+    };
 
-    server.listen(PORT, () => {
+    const HOST = process.env.HOST || getNetworkIP();
+
+    app.listen(PORT, '0.0.0.0', () => { // Escutar em todas as interfaces
       console.log(`🔥 Servidor rodando na porta ${PORT}`);
-      console.log(`📄 Documentação Swagger disponível em ${isLocal ? "http://localhost:5000" : "https://api.podevim.com.br"}/api-docs`);
+      console.log(`📄 Documentação Swagger disponível em:`);
+      console.log(`   - Local: http://localhost:${PORT}/api-docs`);
+      console.log(`   - Rede: http://${HOST}:${PORT}/api-docs`);
+      if (!isLocal) {
+        console.log(`   - Produção: https://api.podevim.com.br/api-docs`);
+      }
     });
-
   } catch (err) {
     console.error("❌ Erro ao iniciar o servidor:", err);
     process.exit(1);
