@@ -1,4 +1,8 @@
-require("dotenv").config();
+// 🌱 Carrega variáveis de ambiente conforme o NODE_ENV
+const NODE_ENV = process.env.NODE_ENV || "development";
+const envFile = NODE_ENV === "production" ? ".env.production" : ".env.development";
+require("dotenv").config({ path: envFile });
+
 const express = require("express");
 const morgan = require("morgan");
 const cors = require("cors");
@@ -19,10 +23,7 @@ const parkingRoutes = require("./src/routes/parkingRoutes");
 const rootRoutes = require("./src/routes/rootRoutes");
 
 const app = express();
-
-// 🌍 Configurações
 const PORT = process.env.PORT || 5000;
-const NODE_ENV = process.env.NODE_ENV || "development";
 const isLocal = NODE_ENV !== "production";
 
 // 🔐 Segurança
@@ -61,7 +62,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: isLocal ? `http://localhost:${PORT}` : "https://api.podevim.com.br",
+        url: process.env.SWAGGER_SERVER_URL || `http://localhost:${PORT}`,
         description: isLocal ? "Servidor Local" : "Servidor Produção",
       },
     ],
@@ -78,15 +79,19 @@ const swaggerOptions = {
   apis: ["./src/routes/*.js"],
 };
 
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerJsDoc(swaggerOptions), {
-  explorer: true,
-  customCss: '.swagger-ui .topbar { display: none }',
-  swaggerOptions: {
-    docExpansion: 'list',
-    persistAuthorization: true,
-    displayRequestDuration: true,
-  },
-}));
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerJsDoc(swaggerOptions), {
+    explorer: true,
+    customCss: '.swagger-ui .topbar { display: none }',
+    swaggerOptions: {
+      docExpansion: "list",
+      persistAuthorization: true,
+      displayRequestDuration: true,
+    },
+  })
+);
 
 // 🚦 Rotas
 app.use("/api/auth", authRoutes);
@@ -98,7 +103,7 @@ app.use("/", rootRoutes);
 
 // ✅ Teste de rota raiz
 app.get("/", (req, res) => {
-  const baseUrl = isLocal ? `http://localhost:${PORT}` : "https://api.podevim.com.br";
+  const baseUrl = process.env.SWAGGER_SERVER_URL || `http://localhost:${PORT}`;
   res.json({
     status: "🔥 API Podevim está rodando!",
     version: "1.0.0",
@@ -124,9 +129,8 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await connectToDatabase();
-
     app.listen(PORT, "0.0.0.0", () => {
-      const baseUrl = isLocal ? `http://localhost:${PORT}` : "https://api.podevim.com.br";
+      const baseUrl = process.env.SWAGGER_SERVER_URL || `http://localhost:${PORT}`;
       console.log(`🔥 Servidor rodando na porta ${PORT}`);
       console.log(`📄 Swagger: ${baseUrl}/api-docs`);
     });
