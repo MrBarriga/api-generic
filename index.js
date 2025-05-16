@@ -10,6 +10,7 @@ const schoolRoutes = require("./src/routes/schoolRoutes");
 const parkingRoutes = require("./src/routes/parkingRoutes");
 const swaggerJsDoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
+const rootRoutes = require("./src/routes/rootRoutes");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
 
@@ -28,6 +29,16 @@ app.use(
 // 🌍 Configuração do CORS - Permitir todas origens em desenvolvimento
 app.use(cors({ origin: true, credentials: true }));
 
+// 🛡️ Rate Limiter
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: {
+    error: "Muitas requisições. Tente novamente mais tarde.",
+  },
+});
+app.use(limiter);
+
 // 📏 Middlewares básicos
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
@@ -43,7 +54,7 @@ const swaggerOptions = {
       contact: { name: "Suporte Podevim", email: "suporte@podevim.com.br" },
     },
     servers: [
-      { url: "/", description: "Servidor Atual" }
+      { url: isLocal ? "http://localhost:" + PORT : "https://api.podevim.com.br", description: isLocal ? "Servidor Local" : "Servidor Produção" }
     ],
     components: {
       securitySchemes: {
@@ -76,6 +87,7 @@ app.use("/api/address", addressRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/school", schoolRoutes);
 app.use("/api/parking", parkingRoutes);
+app.use("/", rootRoutes);
 
 // 🏠 Teste de rota raiz
 app.get("/", (req, res) => {

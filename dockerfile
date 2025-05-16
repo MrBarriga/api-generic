@@ -1,9 +1,12 @@
-FROM node:18
+# Dockerfile para API Podevim
+FROM node:18-alpine
+
 WORKDIR /app
+
 COPY package*.json ./
 RUN npm install
-# Instalação específica do debug para resolver o problema
-RUN npm install debug@4.3.4 --save-exact
+
 COPY . .
-EXPOSE 3000
+
+EXPOSE 5000
 CMD ["npm", "start"]
