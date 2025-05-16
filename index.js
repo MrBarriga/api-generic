@@ -11,10 +11,13 @@ const rateLimit = require("express-rate-limit");
 const swaggerJsDoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 
-// Conexão com DB
+const app = express();
+app.set('trust proxy', 1); // ✅ Corrige problema do X-Forwarded-For
+
+// 📦 Conexão com DB
 const { connectToDatabase } = require("./src/config/database");
 
-// Rotas
+// 🔁 Rotas
 const authRoutes = require("./src/routes/authRoutes");
 const addressRoutes = require("./src/routes/addressRoutes");
 const userRoutes = require("./src/routes/userRoutes");
@@ -22,35 +25,31 @@ const schoolRoutes = require("./src/routes/schoolRoutes");
 const parkingRoutes = require("./src/routes/parkingRoutes");
 const rootRoutes = require("./src/routes/rootRoutes");
 
-const app = express();
 const PORT = process.env.PORT || 5000;
 const isLocal = NODE_ENV !== "production";
+const BASE_URL = process.env.SWAGGER_SERVER_URL || `http://localhost:${PORT}`;
 
 // 🔐 Segurança
-app.use(
-  helmet({
-    contentSecurityPolicy: false,
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
-);
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
 
-// 🌐 CORS liberado no dev
+// 🌐 CORS
 app.use(cors({ origin: true, credentials: true }));
 
 // 🛡️ Limite de requisições
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: { error: "Muitas requisições. Tente novamente mais tarde." },
-  })
-);
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { error: "Muitas requisições. Tente novamente mais tarde." },
+}));
 
 // 🧰 Middlewares
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 
-// 📄 Swagger Setup
+// 📄 Swagger
 const swaggerOptions = {
   swaggerDefinition: {
     openapi: "3.0.0",
@@ -62,7 +61,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: process.env.SWAGGER_SERVER_URL || `http://localhost:${PORT}`,
+        url: BASE_URL,
         description: isLocal ? "Servidor Local" : "Servidor Produção",
       },
     ],
@@ -79,21 +78,17 @@ const swaggerOptions = {
   apis: ["./src/routes/*.js"],
 };
 
-app.use(
-  "/api-docs",
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerJsDoc(swaggerOptions), {
-    explorer: true,
-    customCss: '.swagger-ui .topbar { display: none }',
-    swaggerOptions: {
-      docExpansion: "list",
-      persistAuthorization: true,
-      displayRequestDuration: true,
-    },
-  })
-);
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerJsDoc(swaggerOptions), {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  swaggerOptions: {
+    docExpansion: "list",
+    persistAuthorization: true,
+    displayRequestDuration: true,
+  },
+}));
 
-// 🚦 Rotas
+// 🔁 Rotas
 app.use("/api/auth", authRoutes);
 app.use("/api/address", addressRoutes);
 app.use("/api/user", userRoutes);
@@ -101,22 +96,21 @@ app.use("/api/school", schoolRoutes);
 app.use("/api/parking", parkingRoutes);
 app.use("/", rootRoutes);
 
-// ✅ Teste de rota raiz
+// 🔎 Rota raiz
 app.get("/", (req, res) => {
-  const baseUrl = process.env.SWAGGER_SERVER_URL || `http://localhost:${PORT}`;
   res.json({
     status: "🔥 API Podevim está rodando!",
     version: "1.0.0",
-    docs: `${baseUrl}/api-docs`,
+    docs: `${BASE_URL}/api-docs`,
   });
 });
 
-// ❌ Rota não encontrada
+// ❌ 404
 app.use((req, res) => {
   res.status(404).json({ error: "Rota não encontrada" });
 });
 
-// 🧯 Tratamento de erros
+// 🚨 Tratamento de erros
 app.use((err, req, res, next) => {
   console.error("🚨 Erro na aplicação:", err.stack);
   res.status(500).json({
@@ -125,14 +119,13 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 🚀 Inicia o servidor
+// 🚀 Iniciar servidor
 const startServer = async () => {
   try {
     await connectToDatabase();
     app.listen(PORT, "0.0.0.0", () => {
-      const baseUrl = process.env.SWAGGER_SERVER_URL || `http://localhost:${PORT}`;
       console.log(`🔥 Servidor rodando na porta ${PORT}`);
-      console.log(`📄 Swagger: ${baseUrl}/api-docs`);
+      console.log(`📄 Swagger: ${BASE_URL}/api-docs`);
     });
   } catch (err) {
     console.error("❌ Erro ao iniciar o servidor:", err);
